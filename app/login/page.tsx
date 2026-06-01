@@ -13,18 +13,16 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      // In the API spec, login is by CPF. In Firebase Auth, we use email.
-      // For this implementation, we assume the user logs in with an email address.
-      // If CPF is required by business rules, standard practice in Firebase is to format it as cpf@azo.com.br
-      const emailToUse = email.includes('@') ? email : `${email.replace(/\D/g, '')}@azo-vendas.com.br`;
+      const emailToUse = email.includes('@') ? email : `${email.replace(/\\D/g, '')}@azo-vendas.com.br`;
       
       await signInWithEmailAndPassword(auth, emailToUse, password);
+      
       router.push('/');
     } catch (err: any) {
       console.error(err);
@@ -51,10 +49,12 @@ export default function LoginPage() {
             AZ
           </div>
           <h1 className="text-3xl font-light tracking-tight text-white">Azo <span className="font-bold text-[#9d1450]">Vendas</span></h1>
-          <p className="text-white/40 mt-2 text-sm text-center">Entre para gerenciar suas visitas e pontos.</p>
+          <p className="text-white/40 mt-2 text-sm text-center">
+            Entre para gerenciar suas visitas e pontos.
+          </p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
               {error}
