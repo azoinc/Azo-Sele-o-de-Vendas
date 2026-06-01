@@ -1,12 +1,49 @@
 'use client';
 
-import React from 'react';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
+import React, { useEffect, useState } from 'react';
+import { auth, db } from '@/lib/firebase';
+import { signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { doc, getDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 
 export default function Dashboard() {
+  const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [stats, setStats] = useState({ totais: 0, ptos: 0, active: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      if (u) {
+        try {
+          const docRef = doc(db, 'usuarios', u.uid);
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            setRole(snap.data().role);
+          } else {
+            setRole('corretor'); // default for now if created
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
   const handleLogout = () => {
     signOut(auth);
+  };
+
+  const getRoleLabel = (r: string | null) => {
+    switch (r) {
+      case 'master_of_universe': return 'Master of Universe';
+      case 'admin': return 'Admin';
+      case 'gestor_imob': return 'Gestor Imob';
+      case 'corretor': return 'Corretor';
+      default: return 'Corretor';
+    }
   };
 
   return (
@@ -46,7 +83,7 @@ export default function Dashboard() {
             </div>
             <div className="flex-1">
               <p className="text-xs font-semibold text-white">Roberto Silva</p>
-              <p className="text-[10px] text-white/40 uppercase tracking-widest">Gerente Sênior</p>
+              <p className="text-[10px] text-white/40 uppercase tracking-widest">{getRoleLabel(role)}</p>
             </div>
             <button onClick={handleLogout} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white" title="Sair">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
@@ -60,11 +97,20 @@ export default function Dashboard() {
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 md:mb-12 gap-4">
           <div>
             <h2 className="text-3xl md:text-4xl font-light text-white tracking-tight">Bem-vindo ao <span className="font-bold text-[#61072E]">AZO</span></h2>
-            <p className="text-white/40 mt-1 text-sm">Visão geral de pontuação e cadastro de visitas para parceiros imobiliários.</p>
+            <p className="text-white/40 mt-1 text-sm">
+              Visão geral de visitas baseada no seu nível de acesso: <span className="font-medium text-white">{getRoleLabel(role)}</span>
+            </p>
           </div>
-          <button className="px-6 py-3 bg-[#61072E] hover:bg-[#850a3f] text-white font-bold rounded-full text-xs uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(97,7,46,0.5)]">
-            Cadastrar Nova Visita
-          </button>
+          <div className="flex gap-2 flex-col sm:flex-row">
+            {(role === 'master_of_universe' || role === 'admin') && (
+              <button className="px-6 py-3 bg-blue-900/30 border border-blue-500/30 hover:bg-blue-800/40 text-blue-300 font-bold rounded-full text-xs uppercase tracking-widest transition-all">
+                Gerenciar Acessos
+              </button>
+            )}
+            <button className="px-6 py-3 bg-[#61072E] hover:bg-[#850a3f] text-white font-bold rounded-full text-xs uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(97,7,46,0.5)]">
+              Cadastrar Nova Visita
+            </button>
+          </div>
         </header>
 
         {/* Stats Grid */}
