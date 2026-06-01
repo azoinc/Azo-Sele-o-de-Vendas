@@ -1,0 +1,336 @@
+openapi: 3.1.0
+info:
+  title: Seleção de Vendas Azo API
+  description: Plataforma para cadastro de visitas por corretores de imóveis parceiros e visualização por gerentes para cômputo de pontos.
+  version: 1.0.0
+servers:
+  - url: https://api.vendas-azo.com.br/v1
+    description: Servidor de Produção WebApp
+tags:
+  - name: Auth
+    description: Autenticação de Usuários
+  - name: Corretores
+    description: Gerenciamento dos Corretores Parceiros
+  - name: Visitas
+    description: Cadastro e Gerenciamento de Visitas (Leads)
+  - name: Dashboards
+    description: Relatórios e resumos gerenciais
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Autentica um usuário (Corretor ou Gerente) para acessar a plataforma.
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Autenticação finalizada com sucesso. Retorna o token de acesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciais incorretas ou inválidas.
+  /corretores:
+    get:
+      tags: [Corretores]
+      summary: Lista todos os corretores cadastrados. (Acesso: Gerentes)
+      operationId: getCorretores
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Listagem de corretores parceiros obtida com sucesso.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Corretor'
+  /corretores/{id}:
+    get:
+      tags: [Corretores]
+      summary: Obtém os detalhes de um corretor específico.
+      operationId: getCorretorById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único do corretor.
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Informações do corretor retornada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Corretor'
+  /visitas:
+    get:
+      tags: [Visitas]
+      summary: Lista as visitas efetuadas. Corretores veem apenas as próprias; Gerentes veem todas.
+      operationId: getVisitas
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: corretorId
+          in: query
+          required: false
+          description: Opcional para gerentes filtrarem visitas por um corretor. Corretores preenchem automaticamente com base no token.
+          schema:
+            type: string
+            format: uuid
+            example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Retorna a listagem das visitas aos empreendimentos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Visita'
+    post:
+      tags: [Visitas]
+      summary: Efetua o cadastro de uma nova visita de um lead à um imóvel.
+      operationId: createVisita
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisitaCreateUpdate'
+      responses:
+        '201':
+          description: Visita mapeada e criada no sistema com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visita'
+  /visitas/{id}:
+    get:
+      tags: [Visitas]
+      summary: Retorna os dados de uma visita/lead específico.
+      operationId: getVisitaById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "9a2f4c92-1209-11ee-be56-0242ac120002"
+      responses:
+        '200':
+          description: Dados retornados da visita ao imóvel.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visita'
+    put:
+      tags: [Visitas]
+      summary: Edita os dados documentados de uma visita. (Acesso: Autor da visita)
+      operationId: updateVisita
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: "9a2f4c92-1209-11ee-be56-0242ac120002"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisitaCreateUpdate'
+      responses:
+        '200':
+          description: Visita editada/atualizada com êxito.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visita'
+  /dashboards/visitas-por-corretor:
+    get:
+      tags: [Dashboards]
+      summary: Relatório consolidado e computação de pontos pelas visitas divididas por corretor. (Acesso: Gerentes)
+      operationId: getDashboardVisitasPorCorretor
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dados para emissão de relatório/dashboard retornados.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RelatorioVisita'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        cpf:
+          type: string
+          example: "12345678900"
+          description: "CPF do usuário para entrar na plataforma"
+        password:
+          type: string
+          example: "senhaForte123"
+          description: "Senha pré-cadastrada"
+      required:
+        - cpf
+        - password
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI...1NiIsInR5cCI6IkpXVCJ9"
+        role:
+          type: string
+          enum: [gerente, corretor]
+          example: "corretor"
+      required:
+        - token
+        - role
+    Corretor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        nome:
+          type: string
+          example: "Luiz Silva Santos"
+        telefone:
+          type: string
+          example: "11987654321"
+        creci:
+          type: string
+          example: "123456-F"
+        cpf:
+          type: string
+          example: "12345678900"
+      required:
+        - id
+        - nome
+        - telefone
+        - creci
+        - cpf
+    Visita:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "9a2f4c92-1209-11ee-be56-0242ac120002"
+        corretorId:
+          type: string
+          format: uuid
+          description: ID do corretor associado à esta visita
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        visitanteNome:
+          type: string
+          description: Nome do lead (Visitante)
+          example: "Mariana Souza Oliveira"
+        visitanteTelefone:
+          type: string
+          description: Telefone do acompanhante/lead
+          example: "11911112222"
+        descricao:
+          type: string
+          description: Feedbacks e anotações sobre como foi a visita
+          example: "O casal gostou muito da localização e varanda, aguardando aprovação bancária."
+        dataVisita:
+          type: string
+          format: date-time
+          example: "2026-05-29T14:00:00Z"
+        empreendimento:
+          type: string
+          enum: ["Insigna Península", "A Noite", "Gávea 99", "Ar Ipanema"]
+          example: "Insigna Península"
+          description: O empreendimento visitado
+      required:
+        - id
+        - corretorId
+        - visitanteNome
+        - visitanteTelefone
+        - descricao
+        - dataVisita
+        - empreendimento
+    VisitaCreateUpdate:
+      type: object
+      properties:
+        visitanteNome:
+          type: string
+          example: "Mariana Souza Oliveira"
+        visitanteTelefone:
+          type: string
+          example: "11911112222"
+        descricao:
+          type: string
+          example: "O casal gostou muito da localização e varanda, aguardando aprovação bancária."
+        dataVisita:
+          type: string
+          format: date-time
+          example: "2026-05-29T14:00:00Z"
+        empreendimento:
+          type: string
+          enum: ["Insigna Península", "A Noite", "Gávea 99", "Ar Ipanema"]
+          example: "A Noite"
+          description: O empreendimento visitado
+      required:
+        - visitanteNome
+        - visitanteTelefone
+        - descricao
+        - dataVisita
+        - empreendimento
+    RelatorioVisita:
+      type: object
+      properties:
+        corretorId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        nomeCorretor:
+          type: string
+          example: "Luiz Silva Santos"
+        totalVisitas:
+          type: integer
+          example: 12
+          description: Quantidade total de visitas contabilizadas no período para o corretor
+        pontosObtidos:
+          type: integer
+          example: 120
+          description: Quantidade calculada de pontos para aquela agência / corretor
+      required:
+        - corretorId
+        - nomeCorretor
+        - totalVisitas
+        - pontosObtidos

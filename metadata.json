@@ -1,0 +1,6 @@
+{
+  "name": "Seleção de Vendas Azo API",
+  "description": "API de especificação OpenAPI 3.1 para o WebApp 'Seleção de Vendas Azo', voltado a cadatros de visitas de corretores parceiros e aprovação de gerências.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

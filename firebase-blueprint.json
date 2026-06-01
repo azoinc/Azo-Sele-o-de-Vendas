@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "Corretor": {
+      "title": "Corretor",
+      "description": "Dados do corretor",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string" },
+        "telefone": { "type": "string" },
+        "creci": { "type": "string" },
+        "cpf": { "type": "string" },
+        "role": { "type": "string", "enum": ["corretor", "gerente"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nome", "telefone", "creci", "cpf", "role", "createdAt", "updatedAt"]
+    },
+    "Visita": {
+      "title": "Visita",
+      "description": "Dados da visita de um lead a um empreendimento",
+      "type": "object",
+      "properties": {
+        "corretorId": { "type": "string" },
+        "visitanteNome": { "type": "string" },
+        "visitanteTelefone": { "type": "string" },
+        "descricao": { "type": "string" },
+        "dataVisita": { "type": "string", "format": "date-time" },
+        "empreendimento": { "type": "string", "enum": ["Insigna Península", "A Noite", "Gávea 99", "Ar Ipanema"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["corretorId", "visitanteNome", "visitanteTelefone", "descricao", "dataVisita", "empreendimento", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "corretores/{corretorId}": {
+      "schema": { "$ref": "#/entities/Corretor" },
+      "description": "Users"
+    },
+    "visitas/{visitaId}": {
+      "schema": { "$ref": "#/entities/Visita" },
+      "description": "Visits"
+    }
+  }
+}
