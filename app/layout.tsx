@@ -5,7 +5,7 @@ import { AuthProvider } from '@/components/AuthProvider';
 export const metadata: Metadata = {
   title: 'Seleção de Vendas Azo',
   description: 'Azo',
-  author> Tiffs
+  author: 'Tiffs';
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
