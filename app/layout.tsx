@@ -1,15 +1,20 @@
 import type {Metadata} from 'next';
-import './globals.css'; // Global styles
+import './globals.css';
+import { AuthProvider } from '@/components/AuthProvider';
 
 export const metadata: Metadata = {
-  title: 'My Google AI Studio App',
-  description: 'My Google AI Studio App',
+  title: 'Seleção de Vendas Azo',
+  description: 'Azo',
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="en" className="h-full">
-      <body className="h-full antialiased" suppressHydrationWarning>{children}</body>
+      <body className="h-full antialiased" suppressHydrationWarning>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </body>
     </html>
   );
 }
