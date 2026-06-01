@@ -1,7 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Global Safety Net
     match /{document=**} {
       allow read, write: if false;
     }
@@ -11,87 +10,78 @@ service cloud.firestore {
     function existing() { return resource.data; }
     function isValidId(id) { return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
 
-    function isGerente() {
-      return isSignedIn() &&
-        (
-          (request.auth.token.email == 'mossato.azoinc@gmail.com') ||
-          (exists(/databases/$(database)/documents/corretores/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/corretores/$(request.auth.uid)).data.role == 'gerente')
-        );
+    function getUserData() {
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data
+        : null;
     }
 
-    function isCorretorOwner() {
-      return isSignedIn() &&
-        exists(/databases/$(database)/documents/corretores/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/corretores/$(request.auth.uid)).data.role == 'corretor' &&
-        resource.data.corretorId == request.auth.uid;
+    function getUserRole() {
+      let data = getUserData();
+      return (data != null) ? data.role : null;
     }
 
-    match /corretores/{corretorId} {
-      function isValidCorretor(data) {
-        return data.keys().hasAll(['nome', 'telefone', 'creci', 'cpf', 'role', 'createdAt', 'updatedAt']) &&
-               data.keys().size() <= 7 && // Note: actually need to be exact or handle optional
-               data.nome is string && data.nome.size() > 0 && data.nome.size() <= 100 &&
-               data.telefone is string && data.telefone.size() > 0 && data.telefone.size() <= 20 &&
-               data.creci is string && data.creci.size() > 0 && data.creci.size() <= 20 &&
-               data.cpf is string && data.cpf.size() == 11 &&
-               data.role is string && data.role in ['corretor', 'gerente'] &&
-               data.createdAt is timestamp &&
-               data.updatedAt is timestamp;
-      }
+    function getUserImob() {
+      let data = getUserData();
+      return (data != null) ? data.imobiliariaId : null;
+    }
 
-      allow get: if isSignedIn() && isValidId(corretorId) && (request.auth.uid == corretorId || isGerente());
-      allow list: if isSignedIn() && isGerente();
+    function isMaster() { return getUserRole() == 'master_of_universe'; }
+    function isAdmin() { return getUserRole() == 'admin' || isMaster(); }
+    function isGestorImob() { return getUserRole() == 'gestor_imob'; }
+    function isCorretor() { return getUserRole() == 'corretor'; }
 
-      allow create: if isSignedIn() && isValidId(corretorId) && request.auth.uid == corretorId && 
-                    isValidCorretor(incoming()) && incoming().keys().size() == 7 &&
-                    incoming().createdAt == request.time &&
-                    incoming().updatedAt == request.time &&
-                    (incoming().role == 'corretor' || (incoming().role == 'gerente' && isGerente()));
-
-      allow update: if isSignedIn() && isValidId(corretorId) && isValidCorretor(incoming()) &&
-                    incoming().createdAt == existing().createdAt &&
-                    incoming().updatedAt == request.time &&
-                    (
-                      (isGerente() && incoming().diff(existing()).affectedKeys().hasOnly(['nome', 'telefone', 'creci', 'cpf', 'role', 'updatedAt'])) ||
-                      (request.auth.uid == corretorId && incoming().role == existing().role && incoming().diff(existing()).affectedKeys().hasOnly(['nome', 'telefone', 'creci', 'cpf', 'updatedAt']))
-                    );
+    match /usuarios/{userId} {
+      allow get: if isSignedIn() && (
+        request.auth.uid == userId || 
+        isAdmin() || 
+        (isGestorImob() && existing().imobiliariaId == getUserImob())
+      );
       
-      allow delete: if false; // Forbid deletion for now to guarantee audits
+      allow list: if isSignedIn() && (
+        isAdmin() || 
+        (isGestorImob() && existing().imobiliariaId == getUserImob())
+      );
+
+      allow create: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && (
+        incoming().role == 'corretor' ||
+        isAdmin()
+      );
+
+      allow update: if isSignedIn() && isValidId(userId) && (
+        isMaster() ||
+        (isAdmin() && existing().role in ['corretor', 'gestor_imob'] && incoming().role in ['corretor', 'gestor_imob']) ||
+        (request.auth.uid == userId && incoming().role == existing().role && incoming().imobiliariaId == existing().imobiliariaId)
+      );
+
+      allow delete: if isSignedIn() && isValidId(userId) && isMaster();
     }
 
     match /visitas/{visitaId} {
-      function isValidVisita(data) {
-        return data.keys().hasAll(['corretorId', 'visitanteNome', 'visitanteTelefone', 'descricao', 'dataVisita', 'empreendimento', 'createdAt', 'updatedAt']) &&
-               data.keys().size() <= 8 &&
-               data.corretorId is string && data.corretorId.size() > 0 && data.corretorId.size() <= 128 &&
-               data.visitanteNome is string && data.visitanteNome.size() > 0 && data.visitanteNome.size() <= 100 &&
-               data.visitanteTelefone is string && data.visitanteTelefone.size() > 0 && data.visitanteTelefone.size() <= 20 &&
-               data.descricao is string && data.descricao.size() <= 1000 &&
-               data.dataVisita is string && data.dataVisita.size() > 0 && data.dataVisita.size() <= 50 &&
-               data.empreendimento is string && data.empreendimento in ['Insigna Península', 'A Noite', 'Gávea 99', 'Ar Ipanema'] &&
-               data.createdAt is timestamp &&
-               data.updatedAt is timestamp;
-      }
-
-      allow get: if isSignedIn() && isValidId(visitaId) && (existing().corretorId == request.auth.uid || isGerente());
-      allow list: if isSignedIn() && (existing().corretorId == request.auth.uid || isGerente());
-
-      allow create: if isSignedIn() && isValidId(visitaId) && isValidVisita(incoming()) && incoming().keys().size() == 8 &&
-                    incoming().corretorId == request.auth.uid &&
-                    exists(/databases/$(database)/documents/corretores/$(incoming().corretorId)) &&
-                    incoming().createdAt == request.time &&
-                    incoming().updatedAt == request.time;
+      allow get: if isSignedIn() && isValidId(visitaId) && (
+        existing().corretorId == request.auth.uid || 
+        isAdmin() || 
+        (isGestorImob() && existing().imobiliariaId == getUserImob())
+      );
       
-      allow update: if isSignedIn() && isValidId(visitaId) && isValidVisita(incoming()) &&
-                    incoming().createdAt == existing().createdAt &&
-                    incoming().updatedAt == request.time &&
-                    (
-                      (isGerente() && incoming().diff(existing()).affectedKeys().hasOnly(['visitanteNome', 'visitanteTelefone', 'descricao', 'dataVisita', 'empreendimento', 'updatedAt', 'corretorId'])) ||
-                      (existing().corretorId == request.auth.uid && incoming().corretorId == existing().corretorId && incoming().diff(existing()).affectedKeys().hasOnly(['visitanteNome', 'visitanteTelefone', 'descricao', 'dataVisita', 'empreendimento', 'updatedAt']))
-                    );
+      allow list: if isSignedIn() && (
+        existing().corretorId == request.auth.uid || 
+        isAdmin() || 
+        (isGestorImob() && existing().imobiliariaId == getUserImob())
+      );
 
-      allow delete: if isSignedIn() && isValidId(visitaId) && (existing().corretorId == request.auth.uid || isGerente());
+      allow create: if isSignedIn() && isValidId(visitaId) && (
+        incoming().corretorId == request.auth.uid && 
+        incoming().imobiliariaId == getUserImob()
+      );
+
+      allow update: if isSignedIn() && isValidId(visitaId) && (
+        existing().corretorId == request.auth.uid && 
+        incoming().corretorId == existing().corretorId &&
+        incoming().imobiliariaId == existing().imobiliariaId
+      );
+
+      allow delete: if isSignedIn() && isValidId(visitaId) && isMaster();
     }
   }
 }
