@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { auth, db } from '@/lib/firebase';
-import { signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { auth, db, firebaseConfig } from '@/lib/firebase';
+import { signOut, onAuthStateChanged, User, getAuth as getSecondaryAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function Dashboard() {
@@ -281,28 +282,119 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'gerenciar' && (
-          <section className="p-8 bg-blue-900/10 border border-blue-500/20 rounded-3xl min-h-[400px]">
-            <h3 className="text-xl font-semibold text-white mb-2">Gerenciamento de Acessos</h3>
-            <p className="text-sm text-white/50 mb-8 max-w-3xl">
-              Para adicionar novos Administradores, Gestores de Imobiliária ou Corretores, você deve criar as credenciais no Console do Firebase Authentication e posteriormente na coleção `usuarios` no Firebase Firestore com o nível de acesso (role) desejado.
-            </p>
-            
-            <div className="bg-black/40 rounded-2xl p-6 border border-white/5 max-w-3xl font-mono text-sm">
-              <p className="text-green-400 mb-2">// 1. Crie o usuário no Firebase Auth com email e senha provisória.</p>
-              <p className="text-green-400 mb-2">// 2. Acesse o Firestore Database &#8594; coleção "usuarios".</p>
-              <p className="text-green-400 mb-4">// 3. Crie um documento com o UID gerado e os seguintes campos:</p>
-              <pre className="text-white/70 overflow-x-auto">
-{`{
-  "email": "corretor@imobiliaria.com.br",
-  "nome": "Nome do Usuário",
-  "role": "corretor", // "admin", "gestor_imob", "corretor"
-  "imobiliariaId": "ID_DA_IMOBILIARIA_SE_APLICAVEL"
-}`}
-              </pre>
-            </div>
-          </section>
+          <GerenciarAcessos />
         )}
       </main>
     </div>
+  );
+}
+
+function GerenciarAcessos() {
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [newRole, setNewRole] = useState('corretor');
+  const [isLoading, setIsLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setSuccess('');
+    setError('');
+
+    try {
+      // Cria um app secundario para não deslogar o admin
+      const secondaryApp = getApps().find(a => a.name === 'Secondary') || initializeApp(firebaseConfig, 'Secondary');
+      const secondaryAuth = getSecondaryAuth(secondaryApp);
+      
+      const emailToUse = email.includes('@') ? email : `${email.replace(/\\D/g, '')}@azo-vendas.com.br`;
+      
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, emailToUse, senha);
+      
+      // Salva no firestore
+      await setDoc(doc(db, 'usuarios', userCredential.user.uid), {
+        email: emailToUse,
+        nome,
+        role: newRole,
+        createdAt: new Date().toISOString()
+      });
+
+      // Desloga do secundario
+      await secondaryAuth.signOut();
+      
+      setSuccess('Usuário criado com sucesso!');
+      setNome('');
+      setEmail('');
+      setSenha('');
+      setNewRole('corretor');
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Este e-mail/CPF já está em uso.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('A senha deve ter pelo menos 6 caracteres.');
+      } else {
+        setError('Erro ao criar usuário: ' + err.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <section className="p-8 bg-blue-900/10 border border-blue-500/20 rounded-3xl min-h-[400px]">
+      <h3 className="text-xl font-semibold text-white mb-2">Gerenciamento de Acessos</h3>
+      <p className="text-sm text-white/50 mb-8 max-w-3xl">
+        Crie novos Administradores, Gestores de Imobiliária ou Corretores. O acesso será criado automaticamente no sistema.
+      </p>
+
+      {success && (
+        <div className="p-4 mb-6 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium">
+          {success}
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 mb-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium">
+          {error}
+        </div>
+      )}
+      
+      <form onSubmit={handleCreateUser} className="max-w-2xl space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Nome Completo</label>
+            <input required type="text" value={nome} onChange={e => setNome(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-colors" placeholder="Nome do usuário" />
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">E-mail ou CPF</label>
+            <input required type="text" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-colors" placeholder="Email ou CPF" />
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Senha Provisória</label>
+            <input required minLength={6} type="password" value={senha} onChange={e => setSenha(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-colors" placeholder="Mínimo 6 caracteres" />
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Nível de Acesso (Role)</label>
+            <select value={newRole} onChange={e => setNewRole(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-colors">
+              <option value="corretor" className="bg-gray-900">Corretor</option>
+              <option value="gestor_imob" className="bg-gray-900">Gestor de Imobiliária</option>
+              <option value="admin" className="bg-gray-900">Administrador Geral</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="pt-4 flex justify-end">
+          <button disabled={isLoading} type="submit" className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl text-sm uppercase tracking-widest transition-all">
+            {isLoading ? 'Criando...' : 'Criar Usuário'}
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
