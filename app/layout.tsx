@@ -1,19 +1,31 @@
-import type {Metadata} from 'next';
 import './globals.css';
-import { AuthProvider } from '@/components/AuthProvider';
+import type { Metadata } from 'next';
+import { Inter, JetBrains_Mono } from 'next/font/google';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+});
 
 export const metadata: Metadata = {
-  title: 'Seleção de Vendas Azo',
-  description: 'Azo',
+  title: 'Azo Vendas',
+  description: 'Sistema de visitas e pontuação',
 };
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" className="h-full">
-      <body className="h-full antialiased" suppressHydrationWarning>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+    <html lang="pt-BR" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className="antialiased min-h-screen">
+        {children}
       </body>
     </html>
   );
