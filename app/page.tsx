@@ -1,18 +1,25 @@
+'use client';
+
 import React from 'react';
-import Head from 'next/head';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 
 export default function Dashboard() {
+  const handleLogout = () => {
+    signOut(auth);
+  };
+
   return (
     <div className="min-h-screen bg-[#050505] text-[#e0e0e0] font-sans flex flex-col md:flex-row overflow-hidden relative">
       {/* Background Atmosphere */}
-      <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-[#61072E]/20 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"></div>
 
       {/* Sidebar Navigation */}
       <aside className="w-full md:w-64 border-r border-white/10 flex flex-col z-10 backdrop-blur-md bg-black/40 h-auto md:h-screen">
         <div className="p-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-600 rounded-lg flex items-center justify-center shadow-lg shadow-amber-500/20 font-bold text-black">AZ</div>
+            <div className="w-10 h-10 bg-gradient-to-br from-[#61072E] to-[#3a041c] rounded-lg flex items-center justify-center shadow-lg shadow-[#61072E]/30 font-bold text-white">AZ</div>
             <h1 className="text-xl font-semibold tracking-tight text-white">Azo Vendas</h1>
           </div>
         </div>
@@ -30,21 +37,20 @@ export default function Dashboard() {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             <span className="text-sm font-medium">Visitas Ativas</span>
           </div>
-          <div className="p-3 hover:bg-white/5 rounded-xl flex items-center gap-3 text-white/60 transition-colors cursor-pointer">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-            <span className="text-sm font-medium">Relatórios</span>
-          </div>
         </nav>
 
         <div className="p-6 mt-auto border-t border-white/10 hidden md:block">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full">
             <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
-              <span className="text-xs text-amber-400 font-bold">ADM</span>
+              <span className="text-xs text-[#9d1450] font-bold">ADM</span>
             </div>
-            <div>
+            <div className="flex-1">
               <p className="text-xs font-semibold text-white">Roberto Silva</p>
               <p className="text-[10px] text-white/40 uppercase tracking-widest">Gerente Sênior</p>
             </div>
+            <button onClick={handleLogout} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white" title="Sair">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
           </div>
         </div>
       </aside>
@@ -53,10 +59,10 @@ export default function Dashboard() {
       <main className="flex-1 flex flex-col p-6 md:p-10 z-10 overflow-y-auto h-screen">
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 md:mb-12 gap-4">
           <div>
-            <h2 className="text-3xl md:text-4xl font-light text-white tracking-tight">Bem-vindo ao <span className="font-bold text-amber-500">AZO</span></h2>
+            <h2 className="text-3xl md:text-4xl font-light text-white tracking-tight">Bem-vindo ao <span className="font-bold text-[#61072E]">AZO</span></h2>
             <p className="text-white/40 mt-1 text-sm">Visão geral de pontuação e cadastro de visitas para parceiros imobiliários.</p>
           </div>
-          <button className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-full text-xs uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+          <button className="px-6 py-3 bg-[#61072E] hover:bg-[#850a3f] text-white font-bold rounded-full text-xs uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(97,7,46,0.5)]">
             Cadastrar Nova Visita
           </button>
         </header>
@@ -74,7 +80,7 @@ export default function Dashboard() {
           <div className="p-6 rounded-3xl bg-white/5 border border-white/10 relative overflow-hidden">
             <p className="text-xs uppercase tracking-[0.2em] text-white/40 mb-1">Pontos Gerados</p>
             <p className="text-3xl font-bold text-white">24.890</p>
-            <p className="text-[10px] text-amber-500 mt-2 font-medium">Meta mensal: 80% concluída</p>
+            <p className="text-[10px] text-[#A91E54] mt-2 font-medium">Meta mensal: 80% concluída</p>
           </div>
           <div className="p-6 rounded-3xl bg-white/5 border border-white/10 relative overflow-hidden">
             <p className="text-xs uppercase tracking-[0.2em] text-white/40 mb-1">Leads Ativos</p>
@@ -87,7 +93,6 @@ export default function Dashboard() {
         <section className="flex-1 bg-white/[0.03] border border-white/10 rounded-3xl flex flex-col overflow-hidden min-h-[400px]">
           <div className="p-4 md:p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
             <h3 className="text-sm font-semibold uppercase tracking-widest text-white/70">Últimas Visitas Registradas</h3>
-            <span className="text-[10px] text-white/30 hidden sm:block">Filtrar por: Todos os Corretores</span>
           </div>
           <div className="flex-1 overflow-x-auto">
             <table className="w-full text-left min-w-[700px]">
@@ -109,7 +114,7 @@ export default function Dashboard() {
                   <td className="py-4 px-6 md:px-8 text-white/60">Ricardo Mendes (CRECI: 9812)</td>
                   <td className="py-4 px-6 md:px-8 text-white">Insigna Península</td>
                   <td className="py-4 px-6 md:px-8 text-center text-white/40 whitespace-nowrap">12 Abr, 2024</td>
-                  <td className="py-4 px-6 md:px-8 text-right font-mono text-amber-500">+150</td>
+                  <td className="py-4 px-6 md:px-8 text-right font-mono text-[#D0407B]">+150</td>
                 </tr>
                 <tr className="hover:bg-white/[0.02] transition-colors">
                   <td className="py-4 px-6 md:px-8">
@@ -119,7 +124,7 @@ export default function Dashboard() {
                   <td className="py-4 px-6 md:px-8 text-white/60">Ana Luiza Santos (CRECI: 4421)</td>
                   <td className="py-4 px-6 md:px-8 text-white">A Noite</td>
                   <td className="py-4 px-6 md:px-8 text-center text-white/40 whitespace-nowrap">11 Abr, 2024</td>
-                  <td className="py-4 px-6 md:px-8 text-right font-mono text-amber-500">+150</td>
+                  <td className="py-4 px-6 md:px-8 text-right font-mono text-[#D0407B]">+150</td>
                 </tr>
                 <tr className="hover:bg-white/[0.02] transition-colors">
                   <td className="py-4 px-6 md:px-8">
@@ -129,7 +134,7 @@ export default function Dashboard() {
                   <td className="py-4 px-6 md:px-8 text-white/60">Ricardo Mendes (CRECI: 9812)</td>
                   <td className="py-4 px-6 md:px-8 text-white">Gávea 99</td>
                   <td className="py-4 px-6 md:px-8 text-center text-white/40 whitespace-nowrap">10 Abr, 2024</td>
-                  <td className="py-4 px-6 md:px-8 text-right font-mono text-amber-500">+150</td>
+                  <td className="py-4 px-6 md:px-8 text-right font-mono text-[#D0407B]">+150</td>
                 </tr>
                 <tr className="hover:bg-white/[0.02] transition-colors">
                   <td className="py-4 px-6 md:px-8">
@@ -139,7 +144,7 @@ export default function Dashboard() {
                   <td className="py-4 px-6 md:px-8 text-white/60">Caio Vinicius (CRECI: 1023)</td>
                   <td className="py-4 px-6 md:px-8 text-white">Ar Ipanema</td>
                   <td className="py-4 px-6 md:px-8 text-center text-white/40 whitespace-nowrap">10 Abr, 2024</td>
-                  <td className="py-4 px-6 md:px-8 text-right font-mono text-amber-500">+150</td>
+                  <td className="py-4 px-6 md:px-8 text-right font-mono text-[#D0407B]">+150</td>
                 </tr>
               </tbody>
             </table>
