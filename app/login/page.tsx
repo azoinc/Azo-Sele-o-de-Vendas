@@ -19,7 +19,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const emailToUse = email.includes('@') ? email : `${email.replace(/\\D/g, '')}@azo-vendas.com.br`;
+      const emailToUse = email.includes('@') ? email : `${email.replace(/\D/g, '')}@azo-vendas.com.br`;
       
       await signInWithEmailAndPassword(auth, emailToUse, password);
       

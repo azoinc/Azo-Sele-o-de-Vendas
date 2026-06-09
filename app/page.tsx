@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { auth, db, firebaseConfig } from '@/lib/firebase';
 import { signOut, onAuthStateChanged, User, getAuth as getSecondaryAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { initializeApp, getApps } from 'firebase/app';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -250,35 +250,7 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'nova_visita' && (
-          <section className="p-8 bg-white/[0.03] border border-white/10 rounded-3xl min-h-[400px]">
-            <h3 className="text-xl font-semibold text-white mb-6">Cadastrar Nova Visita</h3>
-            <form className="max-w-2xl space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Nome do Visitante</label>
-                  <input type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#61072E] transition-colors" placeholder="Ex: Marcos Oliveira" />
-                </div>
-                <div>
-                  <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Contato</label>
-                  <input type="text" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#61072E] transition-colors" placeholder="(11) 90000-0000" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Empreendimento</label>
-                <select className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#61072E] transition-colors">
-                  <option value="" className="bg-gray-900">Selecione o empreendimento...</option>
-                  <option value="insigna" className="bg-gray-900">Insigna Península</option>
-                  <option value="noite" className="bg-gray-900">A Noite</option>
-                  <option value="gavea" className="bg-gray-900">Gávea 99</option>
-                </select>
-              </div>
-              <div className="pt-4 flex justify-end">
-                <button type="button" className="px-8 py-3 bg-[#61072E] hover:bg-[#850a3f] text-white font-bold rounded-xl text-sm uppercase tracking-widest transition-all">
-                  Registrar e Gerar Pontos
-                </button>
-              </div>
-            </form>
-          </section>
+          <NovaVisitaForm user={user} onSuccess={() => setActiveTab('dashboard')} />
         )}
 
         {activeTab === 'gerenciar' && (
@@ -286,6 +258,132 @@ export default function Dashboard() {
         )}
       </main>
     </div>
+  );
+}
+
+function NovaVisitaForm({ user, onSuccess }: { user: User | null; onSuccess: () => void }) {
+  const [visitanteNome, setVisitanteNome] = useState('');
+  const [visitanteTelefone, setVisitanteTelefone] = useState('');
+  const [empreendimento, setEmpreendimento] = useState('');
+  const [descricao, setDescricao] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setIsLoading(true);
+    setSuccess('');
+    setError('');
+
+    try {
+      await addDoc(collection(db, 'visitas'), {
+        corretorId: user.uid,
+        visitanteNome,
+        visitanteTelefone,
+        empreendimento,
+        descricao,
+        dataVisita: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setSuccess('Visita registrada com sucesso!');
+      setVisitanteNome('');
+      setVisitanteTelefone('');
+      setEmpreendimento('');
+      setDescricao('');
+      
+      setTimeout(() => {
+        onSuccess();
+      }, 1500);
+    } catch (err: any) {
+      console.error(err);
+      setError('Erro ao registrar visita: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <section className="p-8 bg-white/[0.03] border border-white/10 rounded-3xl min-h-[400px]">
+      <h3 className="text-xl font-semibold text-white mb-6">Cadastrar Nova Visita</h3>
+      
+      {success && (
+        <div className="p-4 mb-6 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium">
+          {success}
+        </div>
+      )}
+      
+      {error && (
+        <div className="p-4 mb-6 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium">
+          {error}
+        </div>
+      )}
+      
+      <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Nome do Visitante</label>
+            <input 
+              required
+              type="text" 
+              value={visitanteNome}
+              onChange={(e) => setVisitanteNome(e.target.value)}
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#61072E] transition-colors" 
+              placeholder="Ex: Marcos Oliveira" 
+            />
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Contato</label>
+            <input 
+              required
+              type="text" 
+              value={visitanteTelefone}
+              onChange={(e) => setVisitanteTelefone(e.target.value)}
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#61072E] transition-colors" 
+              placeholder="(11) 90000-0000" 
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Empreendimento</label>
+          <select 
+            required
+            value={empreendimento}
+            onChange={(e) => setEmpreendimento(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#61072E] transition-colors"
+          >
+            <option value="" className="bg-gray-900">Selecione o empreendimento...</option>
+            <option value="Insigna Península" className="bg-gray-900">Insigna Península</option>
+            <option value="A Noite" className="bg-gray-900">A Noite</option>
+            <option value="Gávea 99" className="bg-gray-900">Gávea 99</option>
+            <option value="Ar Ipanema" className="bg-gray-900">Ar Ipanema</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">Descrição / Feedback</label>
+          <textarea
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            rows={3}
+            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#61072E] transition-colors resize-none"
+            placeholder="Descreva como foi a visita..."
+          />
+        </div>
+        <div className="pt-4 flex justify-end">
+          <button 
+            type="submit" 
+            disabled={isLoading}
+            className="px-8 py-3 bg-[#61072E] hover:bg-[#850a3f] disabled:opacity-50 text-white font-bold rounded-xl text-sm uppercase tracking-widest transition-all"
+          >
+            {isLoading ? 'Registrando...' : 'Registrar e Gerar Pontos'}
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
 
@@ -309,7 +407,7 @@ function GerenciarAcessos() {
       const secondaryApp = getApps().find(a => a.name === 'Secondary') || initializeApp(firebaseConfig, 'Secondary');
       const secondaryAuth = getSecondaryAuth(secondaryApp);
       
-      const emailToUse = email.includes('@') ? email : `${email.replace(/\\D/g, '')}@azo-vendas.com.br`;
+      const emailToUse = email.includes('@') ? email : `${email.replace(/\D/g, '')}@azo-vendas.com.br`;
       
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, emailToUse, senha);
       
