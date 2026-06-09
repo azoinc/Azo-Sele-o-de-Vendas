@@ -9,6 +9,7 @@ import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, getDocs, quer
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({ totais: 0, ptos: 0, active: 0 });
   const [loading, setLoading] = useState(true);
@@ -23,7 +24,9 @@ export default function Dashboard() {
           const snap = await getDoc(docRef);
           
           if (snap.exists()) {
-            setRole(snap.data().role);
+            const data = snap.data();
+            setRole(data.role);
+            setUserName(data.nome || user?.email?.split('@')[0] || 'Usuário');
           } else {
             // Documento não existe - usuário precisa ser criado pelo admin
             setError('Usuário não configurado. Contate o administrador para criar seu acesso.');
@@ -62,6 +65,49 @@ export default function Dashboard() {
       setLoadingUsuarios(false);
     }
   };
+
+  // Estado e função para buscar visitas reais
+  const [visitas, setVisitas] = useState<any[]>([]);
+  const [loadingVisitas, setLoadingVisitas] = useState(false);
+
+  const fetchVisitas = async () => {
+    if (!user) return;
+    setLoadingVisitas(true);
+    try {
+      const q = query(
+        collection(db, 'visitas'),
+        where('corretorId', '==', user.uid)
+      );
+      const querySnapshot = await getDocs(q);
+      const visitasList: any[] = [];
+      querySnapshot.forEach((doc) => {
+        visitasList.push({ id: doc.id, ...doc.data() });
+      });
+      // Ordenar por data decrescente
+      visitasList.sort((a, b) => new Date(b.dataVisita || b.createdAt).getTime() - new Date(a.dataVisita || a.createdAt).getTime());
+      setVisitas(visitasList);
+      
+      // Calcular estatísticas
+      const totalVisitas = visitasList.length;
+      const totalPontos = visitasList.reduce((sum, v) => sum + (v.pontos || 150), 0);
+      setStats({
+        totais: totalVisitas,
+        ptos: totalPontos,
+        active: totalVisitas
+      });
+    } catch (err) {
+      console.error('Erro ao buscar visitas:', err);
+    } finally {
+      setLoadingVisitas(false);
+    }
+  };
+
+  // Carregar visitas quando usuário autenticar
+  useEffect(() => {
+    if (user) {
+      fetchVisitas();
+    }
+  }, [user]);
 
   const getRoleLabel = (r: string | null) => {
     switch (r) {
@@ -118,7 +164,7 @@ export default function Dashboard() {
               <span className="text-xs text-[#9d1450] font-bold">ADM</span>
             </div>
             <div className="flex-1">
-              <p className="text-xs font-semibold text-white">Roberto Silva</p>
+              <p className="text-xs font-semibold text-white">{userName || 'Usuário'}</p>
               <p className="text-[10px] text-white/40 uppercase tracking-widest">{getRoleLabel(role)}</p>
             </div>
             <button onClick={handleLogout} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white" title="Sair">
@@ -165,18 +211,18 @@ export default function Dashboard() {
               <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"></path></svg>
             </div>
             <p className="text-xs uppercase tracking-[0.2em] text-white/40 mb-1">Visitas Totais</p>
-            <p className="text-3xl font-bold text-white">1.482</p>
-            <p className="text-[10px] text-green-400 mt-2 font-medium">+12% em relação ao mês anterior</p>
+            <p className="text-3xl font-bold text-white">{stats.totais}</p>
+            <p className="text-[10px] text-green-400 mt-2 font-medium">Visitas registradas no sistema</p>
           </div>
           <div className="p-6 rounded-3xl bg-white/5 border border-white/10 relative overflow-hidden">
             <p className="text-xs uppercase tracking-[0.2em] text-white/40 mb-1">Pontos Gerados</p>
-            <p className="text-3xl font-bold text-white">24.890</p>
-            <p className="text-[10px] text-[#A91E54] mt-2 font-medium">Meta mensal: 80% concluída</p>
+            <p className="text-3xl font-bold text-white">{stats.ptos.toLocaleString()}</p>
+            <p className="text-[10px] text-[#A91E54] mt-2 font-medium">Total de pontos acumulados</p>
           </div>
           <div className="p-6 rounded-3xl bg-white/5 border border-white/10 relative overflow-hidden">
             <p className="text-xs uppercase tracking-[0.2em] text-white/40 mb-1">Leads Ativos</p>
-            <p className="text-3xl font-bold text-white">643</p>
-            <p className="text-[10px] text-white/20 mt-2">Visitantes registrados na plataforma</p>
+            <p className="text-3xl font-bold text-white">{stats.active}</p>
+            <p className="text-[10px] text-white/20 mt-2">Visitas ativas no período</p>
           </div>
         </div>
 
@@ -197,51 +243,41 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.02] text-sm">
-                <tr className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-4 px-6 md:px-8">
-                    <p className="font-medium text-white">Marcos Oliveira</p>
-                    <p className="text-xs text-white/40 whitespace-nowrap">(11) 98822-1234</p>
-                  </td>
-                  <td className="py-4 px-6 md:px-8 text-white/60">Ricardo Mendes (CRECI: 9812)</td>
-                  <td className="py-4 px-6 md:px-8 text-white">Insigna Península</td>
-                  <td className="py-4 px-6 md:px-8 text-center text-white/40 whitespace-nowrap">12 Abr, 2024</td>
-                  <td className="py-4 px-6 md:px-8 text-right font-mono text-[#D0407B]">+150</td>
-                </tr>
-                <tr className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-4 px-6 md:px-8">
-                    <p className="font-medium text-white">Julia Fernandes</p>
-                    <p className="text-xs text-white/40 whitespace-nowrap">(11) 97711-5544</p>
-                  </td>
-                  <td className="py-4 px-6 md:px-8 text-white/60">Ana Luiza Santos (CRECI: 4421)</td>
-                  <td className="py-4 px-6 md:px-8 text-white">A Noite</td>
-                  <td className="py-4 px-6 md:px-8 text-center text-white/40 whitespace-nowrap">11 Abr, 2024</td>
-                  <td className="py-4 px-6 md:px-8 text-right font-mono text-[#D0407B]">+150</td>
-                </tr>
-                <tr className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-4 px-6 md:px-8">
-                    <p className="font-medium text-white">Fernando Braga</p>
-                    <p className="text-xs text-white/40 whitespace-nowrap">(11) 96541-0099</p>
-                  </td>
-                  <td className="py-4 px-6 md:px-8 text-white/60">Ricardo Mendes (CRECI: 9812)</td>
-                  <td className="py-4 px-6 md:px-8 text-white">Gávea 99</td>
-                  <td className="py-4 px-6 md:px-8 text-center text-white/40 whitespace-nowrap">10 Abr, 2024</td>
-                  <td className="py-4 px-6 md:px-8 text-right font-mono text-[#D0407B]">+150</td>
-                </tr>
-                <tr className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-4 px-6 md:px-8">
-                    <p className="font-medium text-white">Beatriz Soares</p>
-                    <p className="text-xs text-white/40 whitespace-nowrap">(11) 98111-9988</p>
-                  </td>
-                  <td className="py-4 px-6 md:px-8 text-white/60">Caio Vinicius (CRECI: 1023)</td>
-                  <td className="py-4 px-6 md:px-8 text-white">Ar Ipanema</td>
-                  <td className="py-4 px-6 md:px-8 text-center text-white/40 whitespace-nowrap">10 Abr, 2024</td>
-                  <td className="py-4 px-6 md:px-8 text-right font-mono text-[#D0407B]">+150</td>
-                </tr>
+                {loadingVisitas ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-white/40">
+                      Carregando visitas...
+                    </td>
+                  </tr>
+                ) : visitas.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-white/40">
+                      Nenhuma visita registrada ainda
+                    </td>
+                  </tr>
+                ) : (
+                  visitas.slice(0, 10).map((visita) => (
+                    <tr key={visita.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="py-4 px-6 md:px-8">
+                        <p className="font-medium text-white">{visita.visitanteNome || 'N/A'}</p>
+                        <p className="text-xs text-white/40 whitespace-nowrap">{visita.visitanteTelefone || '-'}</p>
+                      </td>
+                      <td className="py-4 px-6 md:px-8 text-white/60">{userName || 'Você'}</td>
+                      <td className="py-4 px-6 md:px-8 text-white">{visita.empreendimento || 'N/A'}</td>
+                      <td className="py-4 px-6 md:px-8 text-center text-white/40 whitespace-nowrap">
+                        {visita.dataVisita ? new Date(visita.dataVisita).toLocaleDateString('pt-BR') : '-'}
+                      </td>
+                      <td className="py-4 px-6 md:px-8 text-right font-mono text-[#D0407B]">+{visita.pontos || 150}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
           <footer className="p-4 border-t border-white/5 bg-black/20 flex justify-center items-center gap-4">
-            <span className="text-[10px] text-white/20">Mostrando 4 de 1,482 entradas</span>
+            <span className="text-[10px] text-white/20">
+              {visitas.length > 0 ? `Mostrando ${Math.min(10, visitas.length)} de ${visitas.length} visitas` : 'Nenhuma visita registrada'}
+            </span>
           </footer>
         </section>
           </>
