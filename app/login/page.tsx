@@ -82,17 +82,25 @@ export default function LoginPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, emailToUse, password);
       
       // Cria documento do usuário no Firestore
-      await setDoc(doc(db, 'usuarios', userCredential.user.uid), {
-        email: emailToUse,
-        nome: nome || emailToUse.split('@')[0],
-        role: 'corretor',
-        createdAt: new Date().toISOString()
-      });
+      try {
+        await setDoc(doc(db, 'usuarios', userCredential.user.uid), {
+          email: emailToUse,
+          nome: nome || emailToUse.split('@')[0],
+          role: 'corretor',
+          createdAt: new Date().toISOString()
+        });
+        console.log('Documento criado com sucesso no Firestore');
+      } catch (firestoreErr: any) {
+        console.error('Erro ao criar documento no Firestore:', firestoreErr);
+        setError('Conta criada, mas erro ao salvar dados: ' + firestoreErr.message);
+        setIsLoading(false);
+        return;
+      }
 
       setSuccess('Cadastro realizado com sucesso! Redirecionando...');
       setTimeout(() => router.push('/'), 1500);
     } catch (err: any) {
-      console.error(err);
+      console.error('Erro no cadastro:', err);
       if (err.code === 'auth/email-already-in-use') {
         setError('Este e-mail/CPF já está cadastrado.');
       } else {
