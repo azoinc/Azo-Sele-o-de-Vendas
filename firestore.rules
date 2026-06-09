@@ -26,7 +26,7 @@ service cloud.firestore {
       return (data != null) ? data.imobiliariaId : null;
     }
 
-    function isMaster() { return getUserRole() == 'master_of_universe'; }
+    function isMaster() { return getUserRole() == 'master'; }
     function isAdmin() { return getUserRole() == 'admin' || isMaster(); }
     function isGestorImob() { return getUserRole() == 'gestor_imob'; }
     function isCorretor() { return getUserRole() == 'corretor'; }

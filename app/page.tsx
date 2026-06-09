@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { auth, db, firebaseConfig } from '@/lib/firebase';
 import { signOut, onAuthStateChanged, User, getAuth as getSecondaryAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { initializeApp, getApps } from 'firebase/app';
-import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -42,9 +42,30 @@ export default function Dashboard() {
     signOut(auth);
   };
 
+  // Estado e função para consultar usuários do Firestore
+  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+
+  const fetchUsuarios = async () => {
+    setLoadingUsuarios(true);
+    try {
+      const q = query(collection(db, 'usuarios'));
+      const querySnapshot = await getDocs(q);
+      const usuariosList: any[] = [];
+      querySnapshot.forEach((doc) => {
+        usuariosList.push({ id: doc.id, ...doc.data() });
+      });
+      setUsuarios(usuariosList);
+    } catch (err) {
+      console.error('Erro ao buscar usuários:', err);
+    } finally {
+      setLoadingUsuarios(false);
+    }
+  };
+
   const getRoleLabel = (r: string | null) => {
     switch (r) {
-      case 'master_of_universe': return 'Master of Universe';
+      case 'master': return 'Master';
       case 'admin': return 'Admin';
       case 'gestor_imob': return 'Gestor Imob';
       case 'corretor': return 'Corretor';
@@ -117,7 +138,7 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex gap-2 flex-col sm:flex-row">
-            {(role === 'master_of_universe' || role === 'admin') && (
+            {(role === 'master' || role === 'admin') && (
               <button 
                 onClick={() => setActiveTab('gerenciar')}
                 className={`px-6 py-3 font-bold rounded-full text-xs uppercase tracking-widest transition-all ${activeTab === 'gerenciar' ? 'bg-blue-600 text-white' : 'bg-blue-900/30 border border-blue-500/30 hover:bg-blue-800/40 text-blue-300'}`}
@@ -476,7 +497,7 @@ function GerenciarAcessos() {
               <option value="corretor" className="bg-gray-900">Corretor</option>
               <option value="gestor_imob" className="bg-gray-900">Gestor de Imobiliária</option>
               <option value="admin" className="bg-gray-900">Administrador Geral</option>
-              <option value="master_of_universe" className="bg-gray-900">Master of Universe</option>
+              <option value="master" className="bg-gray-900">Master</option>
             </select>
           </div>
         </div>
