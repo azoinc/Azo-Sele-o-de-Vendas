@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({ totais: 0, ptos: 0, active: 0 });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -24,17 +25,9 @@ export default function Dashboard() {
           if (snap.exists()) {
             setRole(snap.data().role);
           } else {
-            // First time login via manual auth creation
-            const initialRole = 'corretor';
-            
-            await setDoc(docRef, {
-              email: u.email,
-              role: initialRole,
-              nome: u.displayName || u.email?.split('@')[0] || 'Usuário',
-              createdAt: new Date().toISOString()
-            });
-            
-            setRole(initialRole);
+            // Documento não existe - usuário precisa ser criado pelo admin
+            setError('Usuário não configurado. Contate o administrador para criar seu acesso.');
+            await signOut(auth);
           }
         } catch (e) {
           console.error(e);
