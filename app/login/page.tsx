@@ -2,14 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 import { motion } from 'motion/react';
 
 export default function LoginPage() {
+  const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [nome, setNome] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const router = useRouter();
@@ -33,20 +38,66 @@ export default function LoginPage() {
     );
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const getEmailToUse = () => {
+    return email.includes('@') ? email : `${email.replace(/\D/g, '')}@azo-vendas.com.br`;
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      const emailToUse = email.includes('@') ? email : `${email.replace(/\D/g, '')}@azo-vendas.com.br`;
-      
+      const emailToUse = getEmailToUse();
       await signInWithEmailAndPassword(auth, emailToUse, password);
-      
       router.push('/');
     } catch (err: any) {
       console.error(err);
       setError('Credenciais inválidas. Verifique seu e-mail/CPF e senha.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const emailToUse = getEmailToUse();
+      const userCredential = await createUserWithEmailAndPassword(auth, emailToUse, password);
+      
+      // Cria documento do usuário no Firestore
+      await setDoc(doc(db, 'usuarios', userCredential.user.uid), {
+        email: emailToUse,
+        nome: nome || emailToUse.split('@')[0],
+        role: 'corretor',
+        createdAt: new Date().toISOString()
+      });
+
+      setSuccess('Cadastro realizado com sucesso! Redirecionando...');
+      setTimeout(() => router.push('/'), 1500);
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Este e-mail/CPF já está cadastrado.');
+      } else {
+        setError('Erro ao cadastrar: ' + err.message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -74,10 +125,46 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Toggle Login/Cadastro */}
+        <div className="flex bg-black/40 border border-white/10 rounded-xl p-1 mb-8">
+          <button
+            onClick={() => { setIsRegister(false); setError(''); setSuccess(''); }}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${!isRegister ? 'bg-[#61072E] text-white' : 'text-white/50 hover:text-white'}`}
+          >
+            Login
+          </button>
+          <button
+            onClick={() => { setIsRegister(true); setError(''); setSuccess(''); }}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${isRegister ? 'bg-[#61072E] text-white' : 'text-white/50 hover:text-white'}`}
+          >
+            Cadastro
+          </button>
+        </div>
+
+        <form onSubmit={isRegister ? handleRegister : handleLogin} className="space-y-6">
           {error && (
             <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium text-center">
               {error}
+            </div>
+          )}
+          
+          {success && (
+            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm font-medium text-center">
+              {success}
+            </div>
+          )}
+
+          {isRegister && (
+            <div className="space-y-2">
+              <label className="text-xs uppercase tracking-widest text-white/50 font-medium ml-1">Nome Completo</label>
+              <input 
+                type="text" 
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-4 outline-none focus:border-[#61072E]/50 focus:ring-1 focus:ring-[#61072E]/50 transition-all text-white placeholder-white/20"
+                placeholder="Digite seu nome completo..."
+                required={isRegister}
+              />
             </div>
           )}
           
@@ -102,8 +189,24 @@ export default function LoginPage() {
               className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-4 outline-none focus:border-[#61072E]/50 focus:ring-1 focus:ring-[#61072E]/50 transition-all text-white placeholder-white/20"
               placeholder="••••••••"
               required
+              minLength={6}
             />
           </div>
+
+          {isRegister && (
+            <div className="space-y-2">
+              <label className="text-xs uppercase tracking-widest text-white/50 font-medium ml-1">Confirmar Senha</label>
+              <input 
+                type="password" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-5 py-4 outline-none focus:border-[#61072E]/50 focus:ring-1 focus:ring-[#61072E]/50 transition-all text-white placeholder-white/20"
+                placeholder="Confirme sua senha..."
+                required={isRegister}
+                minLength={6}
+              />
+            </div>
+          )}
 
           <button 
             type="submit" 
@@ -113,7 +216,7 @@ export default function LoginPage() {
             {isLoading ? (
               <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
             ) : (
-              'Acessar Plataforma'
+              isRegister ? 'Criar Conta' : 'Acessar Plataforma'
             )}
           </button>
         </form>
