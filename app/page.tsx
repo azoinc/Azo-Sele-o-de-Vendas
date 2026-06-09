@@ -483,6 +483,7 @@ function GerenciarAcessos() {
               <option value="corretor" className="bg-gray-900">Corretor</option>
               <option value="gestor_imob" className="bg-gray-900">Gestor de Imobiliária</option>
               <option value="admin" className="bg-gray-900">Administrador Geral</option>
+              <option value="master_of_universe" className="bg-gray-900">Master of Universe</option>
             </select>
           </div>
         </div>

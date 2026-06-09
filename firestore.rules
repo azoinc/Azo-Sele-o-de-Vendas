@@ -43,8 +43,8 @@ service cloud.firestore {
         (isGestorImob() && existing().imobiliariaId == getUserImob())
       );
 
-      allow create: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && (
-        incoming().role == 'corretor' ||
+      allow create: if isSignedIn() && isValidId(userId) && (
+        (userId == request.auth.uid && incoming().role == 'corretor') ||
         isAdmin()
       );
 
@@ -65,14 +65,13 @@ service cloud.firestore {
       );
       
       allow list: if isSignedIn() && (
-        existing().corretorId == request.auth.uid || 
         isAdmin() || 
-        (isGestorImob() && existing().imobiliariaId == getUserImob())
+        isGestorImob() ||
+        isCorretor()
       );
 
-      allow create: if isSignedIn() && isValidId(visitaId) && (
-        incoming().corretorId == request.auth.uid && 
-        incoming().imobiliariaId == getUserImob()
+      allow create: if isSignedIn() && (
+        incoming().corretorId == request.auth.uid
       );
 
       allow update: if isSignedIn() && isValidId(visitaId) && (
