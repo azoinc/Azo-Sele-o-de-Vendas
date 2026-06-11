@@ -441,6 +441,7 @@ function GerenciarAcessos() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [creci, setCreci] = useState('');
   const [newRole, setNewRole] = useState('corretor');
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -452,9 +453,16 @@ function GerenciarAcessos() {
     setSuccess('');
     setError('');
 
+    // Validação: CRECI obrigatório para corretores
+    if (newRole === 'corretor' && !creci.trim()) {
+      setError('CRECI é obrigatório para corretores.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Cria um app secundario para não deslogar o admin
-      const secondaryApp = getApps().find(a => a.name === 'Secondary') || initializeApp(firebaseConfig, 'Secondary');
+      const secondaryApp = getApps().find((a: any) => a.name === 'Secondary') || initializeApp(firebaseConfig, 'Secondary');
       const secondaryAuth = getSecondaryAuth(secondaryApp);
       
       const emailToUse = email.includes('@') ? email : `${email.replace(/\D/g, '')}@azo-vendas.com.br`;
@@ -462,12 +470,19 @@ function GerenciarAcessos() {
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, emailToUse, senha);
       
       // Salva no firestore
-      await setDoc(doc(db, 'usuarios', userCredential.user.uid), {
+      const userData: any = {
         email: emailToUse,
         nome,
         role: newRole,
         createdAt: new Date().toISOString()
-      });
+      };
+      
+      // Adiciona CRECI se for corretor
+      if (newRole === 'corretor') {
+        userData.creci = creci.trim();
+      }
+      
+      await setDoc(doc(db, 'usuarios', userCredential.user.uid), userData);
 
       // Desloga do secundario
       await secondaryAuth.signOut();
@@ -476,6 +491,7 @@ function GerenciarAcessos() {
       setNome('');
       setEmail('');
       setSenha('');
+      setCreci('');
       setNewRole('corretor');
     } catch (err: any) {
       console.error(err);
@@ -537,6 +553,25 @@ function GerenciarAcessos() {
             </select>
           </div>
         </div>
+
+        {newRole === 'corretor' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-xs uppercase tracking-widest text-white/50 mb-2">
+                CRECI <span className="text-red-400">*</span>
+              </label>
+              <input 
+                required={newRole === 'corretor'} 
+                type="text" 
+                value={creci} 
+                onChange={e => setCreci(e.target.value)} 
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500/50 transition-colors" 
+                placeholder="Número do CRECI" 
+              />
+              <p className="text-[10px] text-white/30 mt-1">Obrigatório para corretores</p>
+            </div>
+          </div>
+        )}
         
         <div className="pt-4 flex justify-end">
           <button disabled={isLoading} type="submit" className="px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl text-sm uppercase tracking-widest transition-all">
